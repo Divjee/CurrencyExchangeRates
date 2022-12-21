@@ -13,22 +13,20 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
-import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DatabaseAndSql {
+public class DatabaseService {
     Connection connection = null;
     String url = "jdbc:mariadb://exchange_rates:3306/exchange_rates";
     String user = "root";
     String pwd = "root";
-    final static Logger logger = LoggerFactory.getLogger(DatabaseAndSql.class);
-    private final List<CurrencyRate> currencies = new ArrayList<>();
+    final static Logger logger = LoggerFactory.getLogger(DatabaseService.class);
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
 
-    public DatabaseAndSql() {
+    public DatabaseService() {
         try {
             Class.forName("org.mariadb.jdbc.Driver");
             connection = DriverManager.getConnection(url, user, pwd);
@@ -53,8 +51,7 @@ public class DatabaseAndSql {
     }
     public void insertData() throws SQLException, FeedException, IOException {
         Statement stmt = connection.createStatement();
-        addCurrenciesToList();
-        for (CurrencyRate rates : this.currencies) {
+        for (CurrencyRate rates : getCurrencyList()) {
             stmt.executeUpdate("INSERT INTO exchange_rates(date,currency,rate) VALUES ('" + rates.getDate() + "','" + rates.getCurrency() + "','" + rates.getRate() + "')");
         }
     }
@@ -78,11 +75,11 @@ public class DatabaseAndSql {
         }
         context.result(String.valueOf(currencyRateList));
     }
-    public void addCurrenciesToList() throws IOException, FeedException {
+    public List<CurrencyRate> getCurrencyList() throws IOException, FeedException {
         URL feedSource = new URL("https://www.bank.lv/vk/ecb_rss.xml");
         SyndFeedInput input = new SyndFeedInput();
         SyndFeed feeds = input.build(new XmlReader(feedSource));
-
+        List<CurrencyRate> currencies = new ArrayList<>();
         for(Object o : feeds.getEntries()) {
             SyndEntry entry = (SyndEntry) o;
             ArrayList<String> description = new ArrayList<>(List.of(entry.getDescription().getValue().split(" ")));
@@ -91,8 +88,9 @@ public class DatabaseAndSql {
                 String parsed1 = String.valueOf(entry.getPublishedDate()).substring(8, 10);
                 String parsed2 = String.valueOf(entry.getPublishedDate()).substring(4, 7);
                 String parsed3 = parsed1 + "-" + parsed2 + "-" + String.valueOf(entry.getPublishedDate()).substring(24, 28);
-                this.currencies.add(new CurrencyRate(LocalDate.parse(parsed3, formatter), description.get(j), new BigDecimal(description.get(j + 1))));
+                currencies.add(new CurrencyRate(LocalDate.parse(parsed3, formatter), description.get(j), new BigDecimal(description.get(j + 1))));
             }
         }
+        return currencies;
     }
 }
