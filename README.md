@@ -6,7 +6,7 @@ To run the project clone the repository.
 
 Using command prompt to navigate to the cloned repository.
 
-We have to create a docker network network. 
+First have to create a docker network. 
 
       docker network create my_network
 
